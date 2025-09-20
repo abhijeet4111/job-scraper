@@ -1,0 +1,12 @@
+name: Enable Actions
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  enable:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable GitHub Actions
+        run: echo "GitHub Actions is now enabled for this repository"
