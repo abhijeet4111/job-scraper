@@ -1,0 +1,84 @@
+name: Daily Job Scraper
+
+on:
+  schedule:
+    # Runs every day at 7 AM IST (01:30 UTC)
+    - cron: "30 1 * * *"
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  run-scraper:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Playwright browsers
+        run: |
+          playwright install chromium
+
+      - name: Create Google credentials file
+        run: |
+          echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+      - name: Validate credentials file
+        run: |
+          if [ ! -f credentials.json ]; then
+            echo "❌ credentials.json not created"
+            exit 1
+          fi
+          if [ ! -s credentials.json ]; then
+            echo "❌ credentials.json is empty"
+            exit 1
+          fi
+          echo "✅ credentials.json created successfully"
+
+      - name: Run job scraper
+        run: |
+          python jobs_runner.py --scrapers timesjobs companies
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+      - name: Upload scraping summary
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: scraping-summary-${{ github.run_number }}
+          path: scraping_summary_*.txt
+          retention-days: 30
+
+      - name: Clean up credentials
+        if: always()
+        run: |
+          rm -f credentials.json
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Job scraping failed! Check the logs for details."
+          echo "This could be due to:"
+          echo "1. Website structure changes"
+          echo "2. Rate limiting"
+          echo "3. Google Sheets API issues"
+          echo "4. Network connectivity problems"
