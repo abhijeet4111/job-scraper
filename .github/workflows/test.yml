@@ -1,0 +1,20 @@
+name: Test Workflow
+
+on:
+  workflow_dispatch: # Manual trigger only
+  push:
+    branches: [ master, main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Simple test
+        run: |
+          echo "✅ GitHub Actions is working!"
+          echo "Repository: ${{ github.repository }}"
+          echo "Branch: ${{ github.ref }}"
